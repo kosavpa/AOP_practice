@@ -5,6 +5,7 @@ import org.aopalliance.aop.Advice;
 import org.springframework.aop.Advisor;
 import org.springframework.aop.Pointcut;
 import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.aop.support.ControlFlowPointcut;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.aop.support.JdkRegexpMethodPointcut;
 import org.springframework.aop.support.NameMatchMethodPointcutAdvisor;
@@ -12,10 +13,7 @@ import org.springframework.aop.support.annotation.AnnotationMatchingPointcut;
 import owlhome.AOP_practice.advices.AfterReturningAdviceImpl;
 import owlhome.AOP_practice.advices.MethodBeforeAdviceImpl;
 import owlhome.AOP_practice.advices.MethodInterceptorAdvice;
-import owlhome.AOP_practice.object_for_advice.Bird;
-import owlhome.AOP_practice.object_for_advice.Crow;
-import owlhome.AOP_practice.object_for_advice.Flying;
-import owlhome.AOP_practice.object_for_advice.Owl;
+import owlhome.AOP_practice.object_for_advice.*;
 import owlhome.AOP_practice.poincuts.DynamicSayHoorayPointcut;
 import owlhome.AOP_practice.poincuts.SayName;
 import owlhome.AOP_practice.poincuts.StaticSayQuotePointcut;
@@ -36,7 +34,8 @@ public class ProxyManager {
 
         pointcuts.put(PointcutName.STATIC_SAY_QUOTE, new StaticSayQuotePointcut());
         pointcuts.put(PointcutName.DYNAMIC_SAY_HOORAY, new DynamicSayHoorayPointcut());
-        pointcuts.put(PointcutName.JDK_REGEXP_METHOD_POINCUT, new JdkRegexpMethodPointcut());
+        pointcuts.put(PointcutName.JDK_REGEXP_METHOD, new JdkRegexpMethodPointcut());
+        pointcuts.put(PointcutName.CONTROL_FLOW, new ControlFlowPointcut(PhilosophicalSpeech.class, "squadSayQuote"));
 
         birds.put(BirdType.OWL, new Owl("Savunya"));
         birds.put(BirdType.VORONA, new Crow("Vorona"));
@@ -82,7 +81,7 @@ public class ProxyManager {
 
     public static Flying getBirdProxyWithRegexpMethodMatcherPointcut(BirdType birdType, AdviceName adviceName, String regexp, boolean neededCGLIB){
         ProxyFactory proxyFactory = new ProxyFactory();
-        JdkRegexpMethodPointcut pointcut = (JdkRegexpMethodPointcut) pointcuts.get(PointcutName.JDK_REGEXP_METHOD_POINCUT);
+        JdkRegexpMethodPointcut pointcut = (JdkRegexpMethodPointcut) pointcuts.get(PointcutName.JDK_REGEXP_METHOD);
         Advice advice = advices.get(adviceName);
         Flying bird = birds.get(birdType);
         pointcut.setPattern(regexp);
@@ -98,6 +97,21 @@ public class ProxyManager {
     public static Flying getBirdProxyWithAnnotationSayNamePointcut(BirdType birdType, AdviceName adviceName, boolean neededCGLIB){
         ProxyFactory proxyFactory = new ProxyFactory();
         AnnotationMatchingPointcut pointcut = AnnotationMatchingPointcut.forMethodAnnotation(SayName.class);
+        Advice advice = advices.get(adviceName);
+        Flying bird = birds.get(birdType);
+        Advisor advisor = new DefaultPointcutAdvisor(pointcut, advice);
+
+        proxyFactory.setProxyTargetClass(neededCGLIB);
+        if(!neededCGLIB) proxyFactory.setInterfaces(Flying.class);
+        proxyFactory.addAdvisor(advisor);
+        proxyFactory.setTarget(bird);
+
+        return (Flying) proxyFactory.getProxy();
+    }
+
+    public static Flying getProxyBirdWithControlFlowPointcut(BirdType birdType, AdviceName adviceName, boolean neededCGLIB){
+        ProxyFactory proxyFactory = new ProxyFactory();
+        Pointcut pointcut = pointcuts.get(PointcutName.CONTROL_FLOW);
         Advice advice = advices.get(adviceName);
         Flying bird = birds.get(birdType);
         Advisor advisor = new DefaultPointcutAdvisor(pointcut, advice);
